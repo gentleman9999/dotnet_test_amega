@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Live Price Viewer</title>
+  </head>
+  <body>
+    <h1>Live Price Updates</h1>
+    <div id="messages"></div>
+    <div class=""></div>
+    <script>
+      const wsUrl = "ws://localhost:5000/ws/fx?tickers=eurusd,gbpusd"; // Adjust port if yours is different (e.g., ws://localhost:7090/ws for HTTPS)
+      let ws;
+      function formatTimestamp(timestampString) {
+        try {
+          const date = new Date(timestampString);
+          return date.toLocaleString(); // Full date and time
+          // Or use: return date.toISOString(); for ISO format
+          // Or use: return date.toLocaleTimeString(); for time only
+        } catch (error) {
+          console.error("Error parsing timestamp:", error);
+          return timestampString; // Return original if parsing fails
+        }
+      }
+      function connectWebSocket() {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = (event) => {
+          console.log("WebSocket connected!", event);
+          document.getElementById("messages").innerHTML +=
+            '<p style="color: green;">Connected to WebSocket!</p>';
+        };
+
+        ws.onmessage = (event) => {
+          const messageDiv = document.getElementById("messages");
+          const p = document.createElement("p");
+          const resData = JSON.parse(event.data);
+          /// bitcoin
+          let dataTimestamp = "";
+          if (resData[2]) {
+            // If resData[2] contains the timestamp like "2025-06-30T20:57:27.472+08:00"
+            dataTimestamp = formatTimestamp(resData[2]);
+          }
+          if (resData.length == 6) {
+            p.innerHTML = `[${new Date().toLocaleTimeString()}] <span style="font-weight: bold; display: inline-block; width: 150px;">${
+              resData[1]
+            } : ${resData[3]}</span>(${dataTimestamp}) -> Last Size : ${
+              resData[4]
+            } Last Price : ${resData[5]}`;
+          } else {
+            p.innerHTML = `[${new Date().toLocaleTimeString()}] <span style="font-weight: bold; display: inline-block; width: 100px;">${
+              resData[1]
+            }</span> (${dataTimestamp}) -> Bid Size : ${
+              resData[3]
+            } Bid Price : ${resData[4]} Mid Price : ${resData[5]} Ask Size ${
+              resData[6]
+            } Ask Price : ${resData[7]}˝`;
+          }
+
+          messageDiv.prepend(p); // Add new messages at the top
+        };
+
+        ws.onclose = (event) => {
+          console.log("WebSocket closed:", event);
+          document.getElementById("messages").innerHTML +=
+            '<p style="color: red;">WebSocket disconnected. Reconnecting in 5 seconds...</p>';
+          setTimeout(connectWebSocket, 5000); // Attempt to reconnect
+        };
+
+        ws.onerror = (event) => {
+          console.error("WebSocket error:", event);
+          document.getElementById("messages").innerHTML +=
+            '<p style="color: red;">WebSocket error occurred.</p>';
+        };
+      }
+
+      connectWebSocket(); // Start connection when page loads
+    </script>
+  </body>
+</html>
